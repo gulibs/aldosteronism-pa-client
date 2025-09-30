@@ -26,7 +26,7 @@ jobs:
       - name: Setup Node.js 16 and enable npm cache
         uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '23'
           cache: 'npm'
 
       # 安装依赖：优先使用 npm ci（当且仅当有 package-lock.json）
