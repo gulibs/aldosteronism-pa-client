@@ -1,0 +1,61 @@
+/* 基础容器样式 */
+.shimmer-wrapper {
+  position: relative;
+  overflow: hidden;
+  --shimmer-direction: 1; /* 默认值 */
+}
+
+/* 文本模式使用块级布局 */
+.shimmer-text {
+  display: block;
+}
+
+/* 内容模式使用行内块级布局，确保贴合图片 */
+.shimmer-content {
+  display: inline-block;
+  vertical-align: top;
+}
+
+/* 文本覆盖层 */
+.shimmer-overlay {
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(
+    var(--shimmer-angle),
+    rgba(255, 255, 255, 0) var(--shimmer-ratio-left),
+    var(--shimmer-gradient-colors),
+    rgba(255, 255, 255, 0) var(--shimmer-ratio-right)
+  );
+  background-size: 200% 200%; /* 扩大背景尺寸 */
+  background-repeat: no-repeat;
+  animation: shimmer-animation var(--shimmer-duration, 2.5s) var(--shimmer-easing, ease-in-out)
+    infinite var(--shimmer-delay, 0s);
+}
+
+/* 内容模式使用伪元素实现 */
+.shimmer-content::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    var(--shimmer-angle),
+    rgba(255, 255, 255, 0) var(--shimmer-ratio-left),
+    var(--shimmer-gradient-colors),
+    rgba(255, 255, 255, 0) var(--shimmer-ratio-right)
+  );
+  background-size: 200% 200%; /* 扩大背景尺寸 */
+  background-repeat: no-repeat;
+  animation: shimmer-animation var(--shimmer-duration, 2.5s) var(--shimmer-easing, ease-in-out)
+    infinite var(--shimmer-delay, 0s);
+}
+
+/* 统一动画关键帧 */
+@keyframes shimmer-animation {
+  0% {
+    background-position: calc(var(--shimmer-direction) * -100%)
+      calc(var(--shimmer-direction) * -100%);
+  }
+  100% {
+    background-position: calc(var(--shimmer-direction) * 100%) calc(var(--shimmer-direction) * 100%);
+  }
+}
