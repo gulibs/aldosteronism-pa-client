@@ -1,6 +1,6 @@
-name: Build / Release Electron app
+name: Build / Release Electron App
 
-# 通过推送 tag 触发 (例如 git tag v1.0.0 && git push origin v1.0.0)
+# 触发：推送 tag，例如: git tag v1.0.0 && git push origin v1.0.0
 on:
   push:
     tags:
@@ -8,43 +8,87 @@ on:
 
 jobs:
   release:
+    name: Build & Release (matrix)
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
-
     permissions:
-      contents: write   # 需要创建 release / 上传 asset
+      contents: write # 需要创建 release / 上传 asset
       packages: write
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Use Node.js 16
+      - name: Setup Node.js 16 and enable npm cache
         uses: actions/setup-node@v4
         with:
           node-version: '16'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Build on macOS
+      # 安装依赖：优先使用 npm ci（当且仅当有 package-lock.json）
+      - name: Install dependencies (ci if lock exists, else install)
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "Found package-lock.json -> running npm ci"
+            npm ci
+          else
+            echo "No package-lock.json -> running npm install"
+            npm install
+          fi
+        shell: bash
+
+      - name: Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "Running Linux build script"
+          npm run build:linux
+        shell: bash
+
+      - name: Build (macOS)
         if: matrix.os == 'macos-latest'
-        run: npm run build:mac
+        run: |
+          echo "Running macOS build script"
+          npm run build:mac
+        shell: bash
 
-      - name: Build on Windows
+      - name: Build (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm run build:win
+        run: |
+          echo "Running Windows build script"
+          npm run build:win
+        shell: bash
 
+      # 调试：列出 dist 内容以便确认产物已生成
+      - name: List dist folder (debug)
+        run: |
+          echo "Listing repository root:"
+          ls -la
+          echo "Listing dist (if exists):"
+          ls -la dist || true
+        shell: bash
+
+      # 可选：上传至 Actions artifact（如果你想把产物留在 Actions 中作为备份）
+      - name: Upload artifacts to Actions (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}-${{ github.ref_name }}
+          path: |
+            dist/**
+            build/**
+
+      # 创建草稿 Release 并上传产物（softprops 会在 runner 上寻找文件并上传）
       - name: Create draft GitHub release and upload artifacts
         uses: softprops/action-gh-release@v1
         if: always()
         with:
           tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: 'Automated draft release for ${{ github.ref_name }}'
           draft: true
           files: |
             dist/**/*.exe
@@ -58,4 +102,10 @@ jobs:
             dist/**/*.yml
             dist/**/*.blockmap
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          # 推荐使用内置 GITHUB_TOKEN，通常权限足够。
+          # 如果你有自定义 PAT（需要更高权限或跨组织仓库时），
+          # 请在仓库 Secrets 里添加 ACCESS_TOKEN 并把下面改为 ${{ secrets.ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Done
+        run: echo "Release job finished for ${{ matrix.os }}"
